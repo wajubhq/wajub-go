@@ -7,8 +7,6 @@ Official **server-side** SDK for the [Wajub merchant API](https://docs.wajub.com
 
 Use **[Wajub.js](https://docs.wajub.com/libraries/components/js)** for embedded checkout in the browser. Use this SDK on your backend with a secret (`sk_`) or restricted (`rk_`) API key — never expose secret keys in client-side code.
 
-This SDK covers the **merchant API**. It does not wrap checkout session endpoints (`/pay/*`), public link checkout (`/q/*`, `/i/*`), or sandbox simulation — those belong to Wajub.js or direct HTTP during the payment flow.
-
 ## Features
 
 - Resource-oriented API (`client.Payments`, `client.Customers`, …)
