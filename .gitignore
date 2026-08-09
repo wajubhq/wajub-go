@@ -1,0 +1,22 @@
+# Binaries & test artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace (optional local overrides)
+go.work
+go.work.sum
+
+/vendor/
+
+/.idea/
+/.vscode/
+*.swp
+.DS_Store
+
+.env
+.env.local
