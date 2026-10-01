@@ -14,10 +14,6 @@ func (s *PaymentsService) Create(ctx context.Context, params map[string]any, opt
 	return parsePayment(res), nil
 }
 
-func (s *PaymentsService) Initialize(ctx context.Context, params map[string]any, opts *RequestOptions) (Payment, error) {
-	return s.Create(ctx, params, opts)
-}
-
 func (s *PaymentsService) Retrieve(ctx context.Context, id string) (Payment, error) {
 	res, err := s.base.get(ctx, "/payments/"+id, nil)
 	if err != nil {

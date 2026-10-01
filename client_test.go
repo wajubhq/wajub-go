@@ -232,25 +232,6 @@ func TestPaymentsCreateUnwrapsURLs(t *testing.T) {
 	}
 }
 
-func TestPaymentsInitializeAlias(t *testing.T) {
-	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
-		func(r *http.Request) (int, any) {
-			return 200, map[string]any{
-				"transaction":       map[string]any{"id": "pay_456"},
-				"authorization_url": "https://checkout.test/pay/pay_456",
-			}
-		},
-	})
-
-	client := newTestClient(t, server)
-	payment, err := client.Payments.Initialize(context.Background(), map[string]any{
-		"amount": 1000, "currency": "XAF",
-	}, nil)
-	if err != nil || payment.ID != "pay_456" {
-		t.Fatalf("initialize failed: %v", err)
-	}
-}
-
 func TestPaymentsListPagination(t *testing.T) {
 	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
 		func(r *http.Request) (int, any) {

@@ -138,7 +138,7 @@ client, err := wajub.New(wajub.Config{
 | Service | Methods |
 |---------|---------|
 | `client.Global` | `Ping`, `Channels`, `Countries`, `Currencies` |
-| `client.Payments` | `Create`, `Initialize`, `Retrieve`, `List`, `Cancel`, `Process`, `ProcessSplit`, `ListRefunds` |
+| `client.Payments` | `Create`, `Retrieve`, `List`, `Cancel`, `Process`, `ProcessSplit`, `ListRefunds` |
 | `client.Customers` | `Create`, `Retrieve`, `Update`, `Delete`, `List`, `Block`, `Unblock`, `Activate`, `Deactivate`, `ListTaxIds`, `CreateTaxId`, `DeleteTaxId` |
 | `client.Refunds` | `Create`, `Retrieve`, `List` |
 | `client.Transfers` | `Create`, `Retrieve`, `List` |
