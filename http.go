@@ -98,6 +98,17 @@ func (c *baseClient) request(
 		}
 	}
 
+	// Chosen once, before the first attempt: a retry has to carry the same
+	// key, or the API sees a second request. It was drawn again on every
+	// attempt, so a retried POST could create the payment twice.
+	idempotencyKey := ""
+	if opts != nil {
+		idempotencyKey = opts.IdempotencyKey
+	}
+	if idempotencyKey == "" && method != http.MethodGet && method != http.MethodDelete {
+		idempotencyKey = createIdempotencyKey(c.idempotencyKeyPrefix)
+	}
+
 	attempt := 0
 
 	for {
@@ -124,13 +135,6 @@ func (c *baseClient) request(
 			}
 		}
 
-		idempotencyKey := ""
-		if opts != nil {
-			idempotencyKey = opts.IdempotencyKey
-		}
-		if idempotencyKey == "" && method != http.MethodGet && method != http.MethodDelete {
-			idempotencyKey = createIdempotencyKey(c.idempotencyKeyPrefix)
-		}
 		if idempotencyKey != "" {
 			req.Header.Set("Idempotency-Key", idempotencyKey)
 		}
@@ -163,6 +167,14 @@ func (c *baseClient) request(
 
 		if shouldRetryStatus(res.StatusCode) && attempt < c.maxNetworkRetries {
 			time.Sleep(retryDelay(attempt+1, res))
+			attempt++
+			continue
+		}
+
+		// The same key still being processed: the first request's answer is
+		// coming. Asked again with the same key, the API returns it.
+		if idempotencyKey != "" && isIdempotencyKeyInProgress(res.StatusCode, parsed) && attempt < c.maxNetworkRetries {
+			time.Sleep(idempotencyConflictDelay(attempt + 1))
 			attempt++
 			continue
 		}

@@ -55,3 +55,29 @@ func parseRetryAfter(res *http.Response) time.Duration {
 
 	return 0
 }
+
+// isIdempotencyKeyInProgress reports whether the API answered the 409 it sends
+// while a request with the same Idempotency-Key is still running
+// (errors.idempotency_key). A call sent again after a timeout can arrive
+// before the first one has finished: its answer is on the way, so the call is
+// worth repeating with the same key. Every other 409 is a real refusal.
+func isIdempotencyKeyInProgress(status int, body map[string]any) bool {
+	if status != http.StatusConflict {
+		return false
+	}
+	errs, ok := body["errors"].(map[string]any)
+	if !ok {
+		return false
+	}
+	_, present := errs["idempotency_key"]
+	return present
+}
+
+// idempotencyConflictDelay is the pause before asking again about a key still
+// being processed: 2, 4, then 8 seconds. A variable so tests need not wait.
+var idempotencyConflictDelay = func(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	return time.Duration(1<<attempt) * time.Second
+}

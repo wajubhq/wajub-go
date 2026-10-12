@@ -12,7 +12,8 @@ Use **[Wajub.js](https://docs.wajub.com/libraries/components/js)** for embedded 
 - Resource-oriented API (`client.Payments`, `client.Customers`, …)
 - Automatic `Idempotency-Key` on mutating requests (override per call)
 - Typed errors per HTTP status (`AuthenticationError`, `RateLimitError`, …)
-- Automatic retries on 429 and 5xx (max 2, exponential backoff)
+- Automatic retries on 429, 5xx and network errors (max 2, exponential backoff), with the same `Idempotency-Key`
+- A `409` for an `Idempotency-Key` still being processed is retried with the same key (after 2 then 4 s)
 - Page-based pagination with `AutoPagingIter` and `GetNextPage`
 - Webhook signature verification (HMAC-SHA256, timestamp tolerance)
 - Zero third-party runtime dependencies (stdlib only)
@@ -103,7 +104,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if eventType, _ := event["type"].(string); eventType == "payment.succeeded" {
+    if name, _ := event["event"].(string); name == "payment.succeeded" {
         // fulfill order
     }
 
@@ -175,7 +176,7 @@ if err != nil {
     // signature or timestamp invalid
 }
 
-if event["type"] == "payment.succeeded" {
+if event["event"] == "payment.succeeded" {
     // fulfill order
 }
 ```

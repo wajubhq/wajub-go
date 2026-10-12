@@ -362,3 +362,88 @@ func TestPickListAndNormalizeAPIKey(t *testing.T) {
 		t.Fatal("normalize failed")
 	}
 }
+
+// A retried POST must reuse its Idempotency-Key, or the retry is a second
+// request the API cannot recognise.
+func TestRetriedPostReusesItsIdempotencyKey(t *testing.T) {
+	var keys []string
+	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
+		func(r *http.Request) (int, any) {
+			keys = append(keys, r.Header.Get("Idempotency-Key"))
+			return 503, map[string]any{"message": "Unavailable"}
+		},
+		func(r *http.Request) (int, any) {
+			keys = append(keys, r.Header.Get("Idempotency-Key"))
+			return 201, map[string]any{"transaction": map[string]any{"id": "trx_1"}}
+		},
+	})
+
+	client := newTestClient(t, server)
+	if _, err := client.Payments.Create(context.Background(), map[string]any{"amount": 1000, "currency": "XAF"}, nil); err != nil {
+		t.Fatalf("create failed after retry: %v", err)
+	}
+	if len(keys) != 2 || keys[0] == "" || keys[0] != keys[1] {
+		t.Fatalf("expected the same key on both attempts, got %v", keys)
+	}
+}
+
+// A call sent again after a timeout can reach the API while the first one is
+// still running: the API answers 409 with errors.idempotency_key, and the
+// client asks again with the same key.
+func TestRetriesA409ForAnIdempotencyKeyStillBeingProcessed(t *testing.T) {
+	previous := idempotencyConflictDelay
+	var waits []time.Duration
+	idempotencyConflictDelay = func(attempt int) time.Duration {
+		waits = append(waits, previous(attempt))
+		return 0
+	}
+	t.Cleanup(func() { idempotencyConflictDelay = previous })
+
+	var keys []string
+	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
+		func(r *http.Request) (int, any) {
+			keys = append(keys, r.Header.Get("Idempotency-Key"))
+			return 409, map[string]any{
+				"message": "A request with this Idempotency-Key is still being processed.",
+				"errors":  map[string]any{"idempotency_key": []string{"A request with this Idempotency-Key is still being processed."}},
+			}
+		},
+		func(r *http.Request) (int, any) {
+			keys = append(keys, r.Header.Get("Idempotency-Key"))
+			return 201, map[string]any{"transaction": map[string]any{"id": "trx_1"}}
+		},
+	})
+
+	client := newTestClient(t, server)
+	if _, err := client.Payments.Create(context.Background(), map[string]any{"amount": 1000, "currency": "XAF"}, &RequestOptions{IdempotencyKey: "ORDER-42"}); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if len(keys) != 2 || keys[0] != "ORDER-42" || keys[1] != "ORDER-42" {
+		t.Fatalf("expected ORDER-42 twice, got %v", keys)
+	}
+	if len(waits) != 1 || waits[0] != 2*time.Second {
+		t.Fatalf("expected one 2s wait, got %v", waits)
+	}
+}
+
+func TestRaisesAnyOther409AtOnce(t *testing.T) {
+	calls := 0
+	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
+		func(r *http.Request) (int, any) {
+			calls++
+			return 409, map[string]any{"error_code": "payment_in_progress", "message": "A charge is already in progress."}
+		},
+		func(r *http.Request) (int, any) {
+			calls++
+			return 200, map[string]any{"ok": true}
+		},
+	})
+
+	client := newTestClient(t, server)
+	if _, err := client.Payments.Process(context.Background(), "trx_1", map[string]any{"channel": "cm.mtn"}, nil); err == nil {
+		t.Fatal("expected the 409 to be returned")
+	}
+	if calls != 1 {
+		t.Fatalf("expected one call, got %d", calls)
+	}
+}
