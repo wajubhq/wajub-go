@@ -36,8 +36,9 @@ func createIdempotencyKey(prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(b))
 }
 
-// escapeID makes id a single path segment, so that a "/", "?" or "#" in it,
-// or an id of "." or "..", cannot send the request to another route.
+// escapeID makes id a single path segment, so that a "?" or "#" in it, or an
+// id of "." or "..", cannot send the request to another route. checkIDs has
+// already refused a "/".
 func escapeID(id string) string {
 	if id == "." || id == ".." {
 		return strings.Repeat("%2E", len(id))
@@ -45,12 +46,17 @@ func escapeID(id string) string {
 	return url.PathEscape(id)
 }
 
-// checkIDs returns ErrEmptyID if one of ids is empty: the path would lose
-// that segment and reach another route, such as the list.
+// checkIDs returns ErrEmptyID if one of ids is empty, as the path would lose
+// that segment and reach the list, and ErrInvalidID if one contains a "/",
+// which the API reads as a separator even escaped, so "pay_1/refunds" would
+// reach the payment's refunds.
 func checkIDs(ids ...string) error {
 	for _, id := range ids {
 		if id == "" {
 			return ErrEmptyID
+		}
+		if strings.Contains(id, "/") {
+			return ErrInvalidID
 		}
 	}
 	return nil

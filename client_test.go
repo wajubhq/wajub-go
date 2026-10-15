@@ -737,7 +737,8 @@ func TestIDsAreEscapedInRequestPaths(t *testing.T) {
 	calls := idPathCalls(context.Background(), newTestClient(t, server))
 
 	ids := []struct{ raw, escaped string }{
-		{"pay/../x?y#z", "pay%2F..%2Fx%3Fy%23z"},
+		{"pay_1?y=1#z", "pay_1%3Fy=1%23z"},
+		{"pay 1%2F", "pay%201%252F"},
 		{"..", "%2E%2E"},
 		{".", "%2E"},
 		// A blank id is not empty: it reaches the resource's own route,
@@ -757,7 +758,7 @@ func TestIDsAreEscapedInRequestPaths(t *testing.T) {
 	}
 }
 
-func TestEmptyIDsAreRefusedBeforeAnyRequest(t *testing.T) {
+func TestUnusableIDsAreRefusedBeforeAnyRequest(t *testing.T) {
 	var sent []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sent = append(sent, r.Method+" "+r.URL.EscapedPath())
@@ -769,20 +770,33 @@ func TestEmptyIDsAreRefusedBeforeAnyRequest(t *testing.T) {
 	ctx := context.Background()
 
 	calls := idPathCalls(ctx, client)
-	// DeleteTaxID takes two ids: either one empty is refused.
+	// DeleteTaxID takes two ids: either one is refused on its own.
 	calls = append(calls,
-		idPathCall{name: "Customers.DeleteTaxID without a customer", do: func(string) error { return client.Customers.DeleteTaxID(ctx, "", "txi_1", nil) }},
-		idPathCall{name: "Customers.DeleteTaxID without a tax id", do: func(string) error { return client.Customers.DeleteTaxID(ctx, "cus_1", "", nil) }},
+		idPathCall{name: "Customers.DeleteTaxID's customer", do: func(id string) error { return client.Customers.DeleteTaxID(ctx, id, "txi_1", nil) }},
+		idPathCall{name: "Customers.DeleteTaxID's tax id", do: func(id string) error { return client.Customers.DeleteTaxID(ctx, "cus_1", id, nil) }},
 	)
 
+	// The API reads an escaped "/" as a "/": "pay_1/refunds" would list the
+	// refunds of pay_1, and "cus_1/tax_ids/txi_1" delete a tax id.
+	ids := []struct {
+		id   string
+		want error
+	}{
+		{"", ErrEmptyID},
+		{"pay_1/refunds", ErrInvalidID},
+		{"cus_1/tax_ids/txi_1", ErrInvalidID},
+		{"/", ErrInvalidID},
+	}
 	for _, c := range calls {
-		sent = nil
-		err := c.do("")
-		if !errors.Is(err, ErrEmptyID) {
-			t.Errorf("%s(\"\") returned %v, want ErrEmptyID", c.name, err)
-		}
-		if len(sent) > 0 {
-			t.Errorf("%s(\"\") sent %v", c.name, sent)
+		for _, id := range ids {
+			sent = nil
+			err := c.do(id.id)
+			if !errors.Is(err, id.want) {
+				t.Errorf("%s(%q) returned %v, want %v", c.name, id.id, err, id.want)
+			}
+			if len(sent) > 0 {
+				t.Errorf("%s(%q) sent %v", c.name, id.id, sent)
+			}
 		}
 	}
 }

@@ -39,9 +39,12 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - An id containing `/`, `?` or `#`, or an id of `.` or `..`, sent the request
-  to another route: `client.Payments.Retrieve(ctx, "a/../b")` could read
-  payment `b`. Every id now goes into the path as a single escaped segment and
-  reaches the resource it names.
+  to another route: `client.Payments.Retrieve(ctx, "pay_1/refunds")` listed
+  the refunds of `pay_1`, and `client.Customers.Delete(ctx,
+  "cus_1/tax_ids/txi_1", nil)` deleted a tax id. Wajub ids never contain `/`:
+  an id with one now returns `wajub.ErrInvalidID` before anything is sent.
+  `?`, `#`, `.` and `..` are escaped, and the request reaches the resource the
+  id names.
 - An empty id left its segment out of the URL:
   `client.Payments.Retrieve(ctx, "")` asked for the list of payments, and
   `client.Customers.Delete(ctx, "", nil)` sent `DELETE /customers/`. Every
