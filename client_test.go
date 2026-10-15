@@ -653,24 +653,17 @@ func TestPaymentsRetrieveRefundReturnsTheRefund(t *testing.T) {
 	}
 }
 
-func TestIDsAreEscapedInRequestPaths(t *testing.T) {
-	var method, path string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		method, path = r.Method, r.URL.EscapedPath()
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{}`)
-	}))
-	t.Cleanup(server.Close)
-	client := newTestClient(t, server)
-	ctx := context.Background()
+// idPathCall is a method that puts an id in the request path.
+type idPathCall struct {
+	name   string
+	method string
+	path   string // {id} is replaced with the escaped id
+	do     func(id string) error
+}
 
-	type call struct {
-		name   string
-		method string
-		path   string // {id} is replaced with the escaped id
-		do     func(id string) error
-	}
-	calls := []call{
+// idPathCalls lists every method that puts an id in the request path.
+func idPathCalls(ctx context.Context, client *Client) []idPathCall {
+	calls := []idPathCall{
 		{"Payments.Retrieve", http.MethodGet, "/payments/{id}", func(id string) error { _, err := client.Payments.Retrieve(ctx, id); return err }},
 		{"Payments.Cancel", http.MethodDelete, "/payments/{id}", func(id string) error { _, err := client.Payments.Cancel(ctx, id, nil); return err }},
 		{"Payments.Process", http.MethodPost, "/payments/{id}", func(id string) error { _, err := client.Payments.Process(ctx, id, nil, nil); return err }},
@@ -725,16 +718,31 @@ func TestIDsAreEscapedInRequestPaths(t *testing.T) {
 	for _, crud := range cruds {
 		service := crud.service
 		calls = append(calls,
-			call{crud.name + ".Retrieve", http.MethodGet, crud.path + "{id}", func(id string) error { _, err := service.Retrieve(ctx, id); return err }},
-			call{crud.name + ".Update", http.MethodPut, crud.path + "{id}", func(id string) error { _, err := service.Update(ctx, id, nil, nil); return err }},
-			call{crud.name + ".Delete", http.MethodDelete, crud.path + "{id}", func(id string) error { return service.Delete(ctx, id, nil) }},
+			idPathCall{crud.name + ".Retrieve", http.MethodGet, crud.path + "{id}", func(id string) error { _, err := service.Retrieve(ctx, id); return err }},
+			idPathCall{crud.name + ".Update", http.MethodPut, crud.path + "{id}", func(id string) error { _, err := service.Update(ctx, id, nil, nil); return err }},
+			idPathCall{crud.name + ".Delete", http.MethodDelete, crud.path + "{id}", func(id string) error { return service.Delete(ctx, id, nil) }},
 		)
 	}
+	return calls
+}
+
+func TestIDsAreEscapedInRequestPaths(t *testing.T) {
+	var method, path string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.EscapedPath()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{}`)
+	}))
+	t.Cleanup(server.Close)
+	calls := idPathCalls(context.Background(), newTestClient(t, server))
 
 	ids := []struct{ raw, escaped string }{
 		{"pay/../x?y#z", "pay%2F..%2Fx%3Fy%23z"},
 		{"..", "%2E%2E"},
 		{".", "%2E"},
+		// A blank id is not empty: it reaches the resource's own route,
+		// where the API answers that there is no such resource.
+		{" ", "%20"},
 	}
 	for _, c := range calls {
 		for _, id := range ids {
@@ -745,6 +753,36 @@ func TestIDsAreEscapedInRequestPaths(t *testing.T) {
 			if method != c.method || path != want {
 				t.Errorf("%s(%q) sent %s %s, want %s %s", c.name, id.raw, method, path, c.method, want)
 			}
+		}
+	}
+}
+
+func TestEmptyIDsAreRefusedBeforeAnyRequest(t *testing.T) {
+	var sent []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sent = append(sent, r.Method+" "+r.URL.EscapedPath())
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{}`)
+	}))
+	t.Cleanup(server.Close)
+	client := newTestClient(t, server)
+	ctx := context.Background()
+
+	calls := idPathCalls(ctx, client)
+	// DeleteTaxID takes two ids: either one empty is refused.
+	calls = append(calls,
+		idPathCall{name: "Customers.DeleteTaxID without a customer", do: func(string) error { return client.Customers.DeleteTaxID(ctx, "", "txi_1", nil) }},
+		idPathCall{name: "Customers.DeleteTaxID without a tax id", do: func(string) error { return client.Customers.DeleteTaxID(ctx, "cus_1", "", nil) }},
+	)
+
+	for _, c := range calls {
+		sent = nil
+		err := c.do("")
+		if !errors.Is(err, ErrEmptyID) {
+			t.Errorf("%s(\"\") returned %v, want ErrEmptyID", c.name, err)
+		}
+		if len(sent) > 0 {
+			t.Errorf("%s(\"\") sent %v", c.name, sent)
 		}
 	}
 }

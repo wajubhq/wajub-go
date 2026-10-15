@@ -227,6 +227,8 @@ if err != nil {
 
 Every error carries `Message`, `Code`, `HTTPStatus`, `FieldErrors` (every validation message of each field), `Errors` (the first message of each field) and `Raw` (the response body). `wajub.AsAPIError(err)` returns that shared `*WajubError` whatever the type.
 
+A method that puts an id in the URL, such as `Retrieve`, `Update` or `Delete`, returns `wajub.ErrEmptyID` for an empty id and sends nothing. Check it with `errors.Is(err, wajub.ErrEmptyID)`.
+
 ## Testing
 
 Use a sandbox key (`sk_test.…`): the key chooses the environment, and no real money moves. The test phone numbers and cards are on [Test scenarios](https://docs.wajub.com/developer-tools/testing/test-scenarios). To receive webhooks on your machine, forward them with the [Wajub CLI](https://docs.wajub.com/developer-tools/cli/listen).

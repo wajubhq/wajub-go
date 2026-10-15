@@ -1,6 +1,13 @@
 package wajub
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrEmptyID is returned by a method given an empty id, before anything is
+// sent. Check it with errors.Is.
+var ErrEmptyID = errors.New("wajub: id is empty")
 
 // WajubError is the base error for API failures.
 type WajubError struct {

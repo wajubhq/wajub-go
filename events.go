@@ -9,6 +9,9 @@ func (s *EventsService) List(ctx context.Context, params map[string]any) (*Paged
 }
 
 func (s *EventsService) Retrieve(ctx context.Context, id string) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.get(ctx, "/events/"+escapeID(id), nil)
 	if err != nil {
 		return nil, err
@@ -17,6 +20,9 @@ func (s *EventsService) Retrieve(ctx context.Context, id string) (map[string]any
 }
 
 func (s *EventsService) Resend(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.post(ctx, "/events/"+escapeID(id)+"/resend", nil, opts)
 	if err != nil {
 		return nil, err

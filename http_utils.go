@@ -45,6 +45,17 @@ func escapeID(id string) string {
 	return url.PathEscape(id)
 }
 
+// checkIDs returns ErrEmptyID if one of ids is empty: the path would lose
+// that segment and reach another route, such as the list.
+func checkIDs(ids ...string) error {
+	for _, id := range ids {
+		if id == "" {
+			return ErrEmptyID
+		}
+	}
+	return nil
+}
+
 func pickResource(body map[string]any, keys ...string) map[string]any {
 	for _, key := range keys {
 		if value, ok := body[key]; ok && value != nil {

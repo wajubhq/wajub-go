@@ -5,6 +5,9 @@ import "context"
 type CustomersService struct{ CrudService }
 
 func (s *CustomersService) Block(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.post(ctx, "/customers/"+escapeID(id)+"/block", params, opts)
 	if err != nil {
 		return nil, err
@@ -13,6 +16,9 @@ func (s *CustomersService) Block(ctx context.Context, id string, params map[stri
 }
 
 func (s *CustomersService) Unblock(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.post(ctx, "/customers/"+escapeID(id)+"/unblock", nil, opts)
 	if err != nil {
 		return nil, err
@@ -21,6 +27,9 @@ func (s *CustomersService) Unblock(ctx context.Context, id string, opts *Request
 }
 
 func (s *CustomersService) Activate(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.post(ctx, "/customers/"+escapeID(id)+"/activate", nil, opts)
 	if err != nil {
 		return nil, err
@@ -29,6 +38,9 @@ func (s *CustomersService) Activate(ctx context.Context, id string, opts *Reques
 }
 
 func (s *CustomersService) Deactivate(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.post(ctx, "/customers/"+escapeID(id)+"/deactivate", nil, opts)
 	if err != nil {
 		return nil, err
@@ -37,6 +49,9 @@ func (s *CustomersService) Deactivate(ctx context.Context, id string, opts *Requ
 }
 
 func (s *CustomersService) ListTaxIDs(ctx context.Context, customerID string) ([]map[string]any, map[string]any, error) {
+	if err := checkIDs(customerID); err != nil {
+		return nil, nil, err
+	}
 	res, err := s.base.get(ctx, "/customers/"+escapeID(customerID)+"/tax_ids", nil)
 	if err != nil {
 		return nil, nil, err
@@ -46,6 +61,9 @@ func (s *CustomersService) ListTaxIDs(ctx context.Context, customerID string) ([
 }
 
 func (s *CustomersService) CreateTaxID(ctx context.Context, customerID string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(customerID); err != nil {
+		return nil, err
+	}
 	res, err := s.base.post(ctx, "/customers/"+escapeID(customerID)+"/tax_ids", params, opts)
 	if err != nil {
 		return nil, err
@@ -54,6 +72,9 @@ func (s *CustomersService) CreateTaxID(ctx context.Context, customerID string, p
 }
 
 func (s *CustomersService) DeleteTaxID(ctx context.Context, customerID, taxID string, opts *RequestOptions) error {
+	if err := checkIDs(customerID, taxID); err != nil {
+		return err
+	}
 	_, err := s.base.delete(ctx, "/customers/"+escapeID(customerID)+"/tax_ids/"+escapeID(taxID), opts)
 	return err
 }

@@ -56,6 +56,9 @@ func (s *TaxService) ListCodes(ctx context.Context, params map[string]any) ([]ma
 }
 
 func (s *TaxService) RetrieveCode(ctx context.Context, code string) (map[string]any, error) {
+	if err := checkIDs(code); err != nil {
+		return nil, err
+	}
 	res, err := s.base.get(ctx, "/tax/codes/"+escapeID(code), nil)
 	if err != nil {
 		return nil, err
@@ -76,6 +79,9 @@ func (s *TaxService) CreateRegistration(ctx context.Context, params map[string]a
 }
 
 func (s *TaxService) RetrieveRegistration(ctx context.Context, id string) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.get(ctx, "/tax/registrations/"+escapeID(id), nil)
 	if err != nil {
 		return nil, err
@@ -84,6 +90,9 @@ func (s *TaxService) RetrieveRegistration(ctx context.Context, id string) (map[s
 }
 
 func (s *TaxService) UpdateRegistration(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
 	res, err := s.base.put(ctx, "/tax/registrations/"+escapeID(id), params, opts)
 	if err != nil {
 		return nil, err
@@ -92,6 +101,9 @@ func (s *TaxService) UpdateRegistration(ctx context.Context, id string, params m
 }
 
 func (s *TaxService) DeleteRegistration(ctx context.Context, id string, opts *RequestOptions) error {
+	if err := checkIDs(id); err != nil {
+		return err
+	}
 	_, err := s.base.delete(ctx, "/tax/registrations/"+escapeID(id), opts)
 	return err
 }

@@ -42,6 +42,12 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to another route: `client.Payments.Retrieve(ctx, "a/../b")` could read
   payment `b`. Every id now goes into the path as a single escaped segment and
   reaches the resource it names.
+- An empty id left its segment out of the URL:
+  `client.Payments.Retrieve(ctx, "")` asked for the list of payments, and
+  `client.Customers.Delete(ctx, "", nil)` sent `DELETE /customers/`. Every
+  method that puts an id in the URL, such as `Retrieve`, `Update` and
+  `Delete`, now returns `wajub.ErrEmptyID` for an empty one, before anything
+  is sent.
 - The README said amounts are passed in the smallest currency unit (cents).
   Amounts are in the currency's main unit: send `12.50` for GHS 12.50, not
   `1250`. Currencies without decimals, such as XAF and XOF, are not affected.
