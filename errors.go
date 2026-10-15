@@ -7,8 +7,12 @@ type WajubError struct {
 	Message    string
 	Code       string
 	HTTPStatus int
-	Errors     map[string]string
-	Raw        map[string]any
+	// Errors holds the first validation message of each field.
+	Errors map[string]string
+	// FieldErrors holds every validation message of each field, in the
+	// order the API sent them.
+	FieldErrors map[string][]string
+	Raw         map[string]any
 }
 
 func (e *WajubError) Error() string {
@@ -91,27 +95,36 @@ func errorFromResponse(status int, body map[string]any, retryAfter int) error {
 		code = c
 	}
 
-	var fieldErrors map[string]string
+	var firstErrors map[string]string
+	var fieldErrors map[string][]string
 	if rawErrors, ok := body["errors"].(map[string]any); ok {
-		fieldErrors = make(map[string]string, len(rawErrors))
+		firstErrors = make(map[string]string, len(rawErrors))
+		fieldErrors = make(map[string][]string, len(rawErrors))
 		for field, value := range rawErrors {
 			switch v := value.(type) {
 			case []any:
 				if len(v) > 0 {
-					fieldErrors[field] = fmt.Sprint(v[0])
+					messages := make([]string, len(v))
+					for i, message := range v {
+						messages[i] = fmt.Sprint(message)
+					}
+					firstErrors[field] = messages[0]
+					fieldErrors[field] = messages
 				}
 			default:
-				fieldErrors[field] = fmt.Sprint(v)
+				firstErrors[field] = fmt.Sprint(v)
+				fieldErrors[field] = []string{fmt.Sprint(v)}
 			}
 		}
 	}
 
 	base := WajubError{
-		Message:    message,
-		Code:       code,
-		HTTPStatus: status,
-		Errors:     fieldErrors,
-		Raw:        body,
+		Message:     message,
+		Code:        code,
+		HTTPStatus:  status,
+		Errors:      firstErrors,
+		FieldErrors: fieldErrors,
+		Raw:         body,
 	}
 
 	switch status {

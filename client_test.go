@@ -209,6 +209,46 @@ func TestHTTPErrorResponse(t *testing.T) {
 	}
 }
 
+func TestInvalidRequestErrorKeepsEveryMessageOfAField(t *testing.T) {
+	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
+		func(r *http.Request) (int, any) {
+			return 422, map[string]any{
+				"message": "The given data was invalid.",
+				"code":    "validation_error",
+				"errors": map[string]any{
+					"amount":   []any{"The amount field must be a number.", "The amount field must be at least 100."},
+					"currency": []any{"The currency field is required."},
+					"email":    "The email field must be a valid email address.",
+				},
+			}
+		},
+	})
+
+	client := newTestClient(t, server)
+	_, err := client.Payments.Create(context.Background(), map[string]any{"amount": "abc"}, nil)
+	var invalid *InvalidRequestError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("expected InvalidRequestError, got %T", err)
+	}
+
+	want := map[string][]string{
+		"amount":   {"The amount field must be a number.", "The amount field must be at least 100."},
+		"currency": {"The currency field is required."},
+		"email":    {"The email field must be a valid email address."},
+	}
+	if fmt.Sprint(invalid.FieldErrors) != fmt.Sprint(want) {
+		t.Fatalf("FieldErrors = %v, want %v", invalid.FieldErrors, want)
+	}
+
+	// Errors keeps the first message of each field, as before.
+	if invalid.Errors["amount"] != "The amount field must be a number." ||
+		invalid.Errors["currency"] != "The currency field is required." ||
+		invalid.Errors["email"] != "The email field must be a valid email address." ||
+		len(invalid.Errors) != 3 {
+		t.Fatalf("unexpected Errors: %v", invalid.Errors)
+	}
+}
+
 func TestPaymentsCreateUnwrapsURLs(t *testing.T) {
 	server, _ := newTestServer(t, []func(r *http.Request) (int, any){
 		func(r *http.Request) (int, any) {

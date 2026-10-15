@@ -191,7 +191,7 @@ payment, err := client.Payments.Create(ctx, params, nil)
 if err != nil {
     var invalid *wajub.InvalidRequestError
     if errors.As(err, &invalid) {
-        log.Println(invalid.Errors) // field-level validation errors
+        log.Println(invalid.FieldErrors) // every validation message, by field
         return
     }
     var auth *wajub.AuthenticationError
@@ -216,7 +216,7 @@ if err != nil {
 | `*WajubError` | Any other error status |
 | `*APIConnectionError` | No response: network error or timeout; `errors.Is` reaches the cause |
 
-Every error carries `Message`, `Code`, `HTTPStatus`, `Errors` (field-level messages) and `Raw` (the response body). `wajub.AsAPIError(err)` returns that shared `*WajubError` whatever the type.
+Every error carries `Message`, `Code`, `HTTPStatus`, `FieldErrors` (every validation message of each field), `Errors` (the first message of each field) and `Raw` (the response body). `wajub.AsAPIError(err)` returns that shared `*WajubError` whatever the type.
 
 ## Testing
 

@@ -15,6 +15,10 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `AmountDecimal` is a `float64` that keeps it: `12.5` for GHS 12.50, `15000`
   for XAF 15,000. Put it back in a request as is, for a refund for instance,
   and it goes out with its decimals.
+- **`FieldErrors` on API errors, every validation message of each field.** A
+  `422` can give a field several messages; `Errors` keeps only the first one.
+  `invalid.FieldErrors["amount"]` lists them all, in the order the API sent
+  them. `Errors` is unchanged.
 
 ### Deprecated
 - **`Payment.Amount` and `Refund.Amount`.** They are `int64` and drop the
