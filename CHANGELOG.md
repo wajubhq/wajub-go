@@ -50,6 +50,11 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   method that puts an id in the URL, such as `Retrieve`, `Update` and
   `Delete`, now returns `wajub.ErrEmptyID` for an empty one, before anything
   is sent.
+- A call whose context was cancelled, or whose deadline passed, while it
+  waited to retry kept waiting until the end of the pause, up to the
+  `Retry-After` the API asked for. It now returns at once, with an
+  `*APIConnectionError` that `errors.Is` matches to `context.Canceled` or
+  `context.DeadlineExceeded`.
 - The README said amounts are passed in the smallest currency unit (cents).
   Amounts are in the currency's main unit: send `12.50` for GHS 12.50, not
   `1250`. Currencies without decimals, such as XAF and XOF, are not affected.

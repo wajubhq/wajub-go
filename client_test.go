@@ -800,3 +800,60 @@ func TestUnusableIDsAreRefusedBeforeAnyRequest(t *testing.T) {
 		}
 	}
 }
+
+type failingTransport struct{}
+
+func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("connection refused")
+}
+
+func TestCancellingTheContextEndsARetryWait(t *testing.T) {
+	retryAfter := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "3")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(retryAfter.Close)
+	keyInProgress := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = io.WriteString(w, `{"message":"Still being processed.","errors":{"idempotency_key":["Still being processed."]}}`)
+	}))
+	t.Cleanup(keyInProgress.Close)
+
+	newClient := func(transport http.RoundTripper) *Client {
+		client, err := New(Config{APIKey: testAPIKey, HTTPClient: &http.Client{Transport: transport}})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		return client
+	}
+
+	cases := []struct {
+		name   string
+		client *Client
+	}{
+		{"a 503 with Retry-After: 3", newClient(&testTransport{server: retryAfter})},
+		{"a 409 for a key still being processed", newClient(&testTransport{server: keyInProgress})},
+		{"a network error", newClient(failingTransport{})},
+	}
+	for _, c := range cases {
+		ctx, cancel := context.WithCancel(context.Background())
+		timer := time.AfterFunc(20*time.Millisecond, cancel)
+		start := time.Now()
+		_, err := c.client.Payments.Create(ctx, map[string]any{"amount": 1000}, nil)
+		elapsed := time.Since(start)
+		timer.Stop()
+		cancel()
+
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("after %s, the call returned %v, want context.Canceled", c.name, err)
+		}
+		var connErr *APIConnectionError
+		if !errors.As(err, &connErr) {
+			t.Errorf("after %s, the call returned %T, want *APIConnectionError", c.name, err)
+		}
+		if elapsed > 200*time.Millisecond {
+			t.Errorf("after %s, the call returned %v after the context was cancelled", c.name, elapsed-20*time.Millisecond)
+		}
+	}
+}

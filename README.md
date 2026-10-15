@@ -223,7 +223,7 @@ if err != nil {
 | `*InvalidRequestError` | `400`, `422` |
 | `*RateLimitError` | `429`, with `RetryAfter` in seconds |
 | `*WajubError` | Any other error status |
-| `*APIConnectionError` | No response: network error or timeout; `errors.Is` reaches the cause |
+| `*APIConnectionError` | No response: network error, timeout or cancelled context; `errors.Is` reaches the cause |
 
 Every error carries `Message`, `Code`, `HTTPStatus`, `FieldErrors` (every validation message of each field), `Errors` (the first message of each field) and `Raw` (the response body). `wajub.AsAPIError(err)` returns that shared `*WajubError` whatever the type.
 
