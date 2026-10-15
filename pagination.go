@@ -7,11 +7,11 @@ import (
 
 // PagedResult holds a page of list results.
 type PagedResult struct {
-	Data     []map[string]any
-	Meta     map[string]any
-	HasMore  bool
+	Data      []map[string]any
+	Meta      map[string]any
+	HasMore   bool
 	fetchPage func(ctx context.Context, page int) (*PagedResult, error)
-	ctx      context.Context
+	ctx       context.Context
 }
 
 // GetNextPage returns the next page of results.
