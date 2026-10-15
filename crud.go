@@ -29,6 +29,8 @@ func (s *CrudService) List(ctx context.Context, params map[string]any) (*PagedRe
 	return createPagedList(ctx, &s.base, "/"+s.path, s.plural, params)
 }
 
+// Update changes the resource id. Refunds and payouts cannot be changed:
+// on client.Refunds and client.Transfers it always returns an error.
 func (s *CrudService) Update(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
 	res, err := s.base.put(ctx, "/"+s.path+"/"+escapeID(id), params, opts)
 	if err != nil {
@@ -37,6 +39,8 @@ func (s *CrudService) Update(ctx context.Context, id string, params map[string]a
 	return pickResource(res, s.singular), nil
 }
 
+// Delete deletes the resource id. Refunds and payouts cannot be deleted:
+// on client.Refunds and client.Transfers it always returns an error.
 func (s *CrudService) Delete(ctx context.Context, id string, opts *RequestOptions) error {
 	_, err := s.base.delete(ctx, "/"+s.path+"/"+escapeID(id), opts)
 	return err
