@@ -33,9 +33,8 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   machine, use the Wajub CLI's `wajub listen`.
 - **`client.Refunds.Update`, `client.Refunds.Delete`,
   `client.Transfers.Update` and `client.Transfers.Delete`.** A refund or a
-  payout cannot be changed or deleted, so they always return an error. They
-  share their code with the services that do have these methods, so your
-  editor will not flag them: remove the calls.
+  payout cannot be changed or deleted, so they always return an error. Your
+  editor does not flag these calls: remove them.
 
 ### Fixed
 - An id containing `/`, `?` or `#`, or an id of `.` or `..`, sent the request
