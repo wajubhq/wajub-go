@@ -9,7 +9,7 @@ func (s *DisputesService) List(ctx context.Context, params map[string]any) (*Pag
 }
 
 func (s *DisputesService) Retrieve(ctx context.Context, id string) (map[string]any, error) {
-	res, err := s.base.get(ctx, "/disputes/"+id, nil)
+	res, err := s.base.get(ctx, "/disputes/"+escapeID(id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +17,7 @@ func (s *DisputesService) Retrieve(ctx context.Context, id string) (map[string]a
 }
 
 func (s *DisputesService) SubmitEvidence(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/disputes/"+id+"/submit-evidence", params, opts)
+	res, err := s.base.post(ctx, "/disputes/"+escapeID(id)+"/submit-evidence", params, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (s *DisputesService) SubmitEvidence(ctx context.Context, id string, params 
 }
 
 func (s *DisputesService) Accept(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/disputes/"+id+"/accept", nil, opts)
+	res, err := s.base.post(ctx, "/disputes/"+escapeID(id)+"/accept", nil, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (s *DisputesService) Accept(ctx context.Context, id string, opts *RequestOp
 }
 
 func (s *DisputesService) Close(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/disputes/"+id+"/close", nil, opts)
+	res, err := s.base.post(ctx, "/disputes/"+escapeID(id)+"/close", nil, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (s *DisputesService) Close(ctx context.Context, id string, opts *RequestOpt
 }
 
 func (s *DisputesService) SendMessage(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/disputes/"+id+"/messages", params, opts)
+	res, err := s.base.post(ctx, "/disputes/"+escapeID(id)+"/messages", params, opts)
 	if err != nil {
 		return nil, err
 	}

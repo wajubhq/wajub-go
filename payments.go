@@ -15,7 +15,7 @@ func (s *PaymentsService) Create(ctx context.Context, params map[string]any, opt
 }
 
 func (s *PaymentsService) Retrieve(ctx context.Context, id string) (Payment, error) {
-	res, err := s.base.get(ctx, "/payments/"+id, nil)
+	res, err := s.base.get(ctx, "/payments/"+escapeID(id), nil)
 	if err != nil {
 		return Payment{}, err
 	}
@@ -27,7 +27,7 @@ func (s *PaymentsService) List(ctx context.Context, params map[string]any) (*Pag
 }
 
 func (s *PaymentsService) Cancel(ctx context.Context, id string, opts *RequestOptions) (Payment, error) {
-	res, err := s.base.delete(ctx, "/payments/"+id, opts)
+	res, err := s.base.delete(ctx, "/payments/"+escapeID(id), opts)
 	if err != nil {
 		return Payment{}, err
 	}
@@ -35,7 +35,7 @@ func (s *PaymentsService) Cancel(ctx context.Context, id string, opts *RequestOp
 }
 
 func (s *PaymentsService) Process(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (Payment, error) {
-	res, err := s.base.post(ctx, "/payments/"+id, params, opts)
+	res, err := s.base.post(ctx, "/payments/"+escapeID(id), params, opts)
 	if err != nil {
 		return Payment{}, err
 	}
@@ -43,7 +43,7 @@ func (s *PaymentsService) Process(ctx context.Context, id string, params map[str
 }
 
 func (s *PaymentsService) ProcessSplit(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (Payment, error) {
-	res, err := s.base.post(ctx, "/payments/"+id+"/splits", params, opts)
+	res, err := s.base.post(ctx, "/payments/"+escapeID(id)+"/splits", params, opts)
 	if err != nil {
 		return Payment{}, err
 	}
@@ -51,7 +51,7 @@ func (s *PaymentsService) ProcessSplit(ctx context.Context, id string, params ma
 }
 
 func (s *PaymentsService) ListRefunds(ctx context.Context, id string, params map[string]any) ([]map[string]any, map[string]any, error) {
-	res, err := s.base.get(ctx, "/payments/"+id+"/refunds", params)
+	res, err := s.base.get(ctx, "/payments/"+escapeID(id)+"/refunds", params)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -77,7 +77,7 @@ func (s *PaymentsService) Refund(ctx context.Context, id string, params map[stri
 
 // RetrieveRefund returns the refund refundID, of any payment.
 func (s *PaymentsService) RetrieveRefund(ctx context.Context, refundID string) (Refund, error) {
-	res, err := s.base.get(ctx, "/refunds/"+refundID, nil)
+	res, err := s.base.get(ctx, "/refunds/"+escapeID(refundID), nil)
 	if err != nil {
 		return Refund{}, err
 	}

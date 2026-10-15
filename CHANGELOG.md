@@ -30,6 +30,10 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reads them compiles and behaves as before. Read `AmountDecimal` instead.
 
 ### Fixed
+- An id containing `/`, `?` or `#`, or an id of `.` or `..`, sent the request
+  to another route: `client.Payments.Retrieve(ctx, "a/../b")` could read
+  payment `b`. Every id now goes into the path as a single escaped segment and
+  reaches the resource it names.
 - The README said amounts are passed in the smallest currency unit (cents).
   Amounts are in the currency's main unit: send `12.50` for GHS 12.50, not
   `1250`. Currencies without decimals, such as XAF and XOF, are not affected.

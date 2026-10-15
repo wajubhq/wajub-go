@@ -652,3 +652,99 @@ func TestPaymentsRetrieveRefundReturnsTheRefund(t *testing.T) {
 		t.Fatalf("unexpected refund: %+v", refund)
 	}
 }
+
+func TestIDsAreEscapedInRequestPaths(t *testing.T) {
+	var method, path string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.EscapedPath()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{}`)
+	}))
+	t.Cleanup(server.Close)
+	client := newTestClient(t, server)
+	ctx := context.Background()
+
+	type call struct {
+		name   string
+		method string
+		path   string // {id} is replaced with the escaped id
+		do     func(id string) error
+	}
+	calls := []call{
+		{"Payments.Retrieve", http.MethodGet, "/payments/{id}", func(id string) error { _, err := client.Payments.Retrieve(ctx, id); return err }},
+		{"Payments.Cancel", http.MethodDelete, "/payments/{id}", func(id string) error { _, err := client.Payments.Cancel(ctx, id, nil); return err }},
+		{"Payments.Process", http.MethodPost, "/payments/{id}", func(id string) error { _, err := client.Payments.Process(ctx, id, nil, nil); return err }},
+		{"Payments.ProcessSplit", http.MethodPost, "/payments/{id}/splits", func(id string) error { _, err := client.Payments.ProcessSplit(ctx, id, nil, nil); return err }},
+		{"Payments.ListRefunds", http.MethodGet, "/payments/{id}/refunds", func(id string) error { _, _, err := client.Payments.ListRefunds(ctx, id, nil); return err }},
+		{"Payments.ListRefunds with a query", http.MethodGet, "/payments/{id}/refunds", func(id string) error {
+			_, _, err := client.Payments.ListRefunds(ctx, id, map[string]any{"page": 2})
+			return err
+		}},
+		{"Payments.RetrieveRefund", http.MethodGet, "/refunds/{id}", func(id string) error { _, err := client.Payments.RetrieveRefund(ctx, id); return err }},
+		{"Customers.Block", http.MethodPost, "/customers/{id}/block", func(id string) error { _, err := client.Customers.Block(ctx, id, nil, nil); return err }},
+		{"Customers.Unblock", http.MethodPost, "/customers/{id}/unblock", func(id string) error { _, err := client.Customers.Unblock(ctx, id, nil); return err }},
+		{"Customers.Activate", http.MethodPost, "/customers/{id}/activate", func(id string) error { _, err := client.Customers.Activate(ctx, id, nil); return err }},
+		{"Customers.Deactivate", http.MethodPost, "/customers/{id}/deactivate", func(id string) error { _, err := client.Customers.Deactivate(ctx, id, nil); return err }},
+		{"Customers.ListTaxIDs", http.MethodGet, "/customers/{id}/tax_ids", func(id string) error { _, _, err := client.Customers.ListTaxIDs(ctx, id); return err }},
+		{"Customers.CreateTaxID", http.MethodPost, "/customers/{id}/tax_ids", func(id string) error { _, err := client.Customers.CreateTaxID(ctx, id, nil, nil); return err }},
+		{"Customers.DeleteTaxID", http.MethodDelete, "/customers/{id}/tax_ids/{id}", func(id string) error { return client.Customers.DeleteTaxID(ctx, id, id, nil) }},
+		{"Invoices.Send", http.MethodPost, "/invoices/{id}/send", func(id string) error { _, err := client.Invoices.Send(ctx, id, nil); return err }},
+		{"Invoices.MarkPaid", http.MethodPost, "/invoices/{id}/mark-paid", func(id string) error { _, err := client.Invoices.MarkPaid(ctx, id, nil, nil); return err }},
+		{"Invoices.Cancel", http.MethodPost, "/invoices/{id}/cancel", func(id string) error { _, err := client.Invoices.Cancel(ctx, id, nil); return err }},
+		{"Disputes.Retrieve", http.MethodGet, "/disputes/{id}", func(id string) error { _, err := client.Disputes.Retrieve(ctx, id); return err }},
+		{"Disputes.SubmitEvidence", http.MethodPost, "/disputes/{id}/submit-evidence", func(id string) error { _, err := client.Disputes.SubmitEvidence(ctx, id, nil, nil); return err }},
+		{"Disputes.Accept", http.MethodPost, "/disputes/{id}/accept", func(id string) error { _, err := client.Disputes.Accept(ctx, id, nil); return err }},
+		{"Disputes.Close", http.MethodPost, "/disputes/{id}/close", func(id string) error { _, err := client.Disputes.Close(ctx, id, nil); return err }},
+		{"Disputes.SendMessage", http.MethodPost, "/disputes/{id}/messages", func(id string) error { _, err := client.Disputes.SendMessage(ctx, id, nil, nil); return err }},
+		{"Events.Retrieve", http.MethodGet, "/events/{id}", func(id string) error { _, err := client.Events.Retrieve(ctx, id); return err }},
+		{"Events.Resend", http.MethodPost, "/events/{id}/resend", func(id string) error { _, err := client.Events.Resend(ctx, id, nil); return err }},
+		{"WebhookEndpoints.RotateSecret", http.MethodPost, "/webhooks/{id}/rotate-secret", func(id string) error { _, err := client.WebhookEndpoints.RotateSecret(ctx, id, nil); return err }},
+		{"Accounts.RegenerateToken", http.MethodPost, "/accounts/{id}/token", func(id string) error { _, err := client.Accounts.RegenerateToken(ctx, id, nil); return err }},
+		{"Tax.RetrieveCode", http.MethodGet, "/tax/codes/{id}", func(id string) error { _, err := client.Tax.RetrieveCode(ctx, id); return err }},
+		{"Tax.RetrieveRegistration", http.MethodGet, "/tax/registrations/{id}", func(id string) error { _, err := client.Tax.RetrieveRegistration(ctx, id); return err }},
+		{"Tax.UpdateRegistration", http.MethodPut, "/tax/registrations/{id}", func(id string) error { _, err := client.Tax.UpdateRegistration(ctx, id, nil, nil); return err }},
+		{"Tax.DeleteRegistration", http.MethodDelete, "/tax/registrations/{id}", func(id string) error { return client.Tax.DeleteRegistration(ctx, id, nil) }},
+		{"Shield.RemoveFromBlocklist", http.MethodDelete, "/shield/blocklist/{id}", func(id string) error { return client.Shield.RemoveFromBlocklist(ctx, id, nil) }},
+	}
+
+	// Every service built on CrudService: Retrieve, Update and Delete.
+	cruds := []struct {
+		name    string
+		service *CrudService
+		path    string
+	}{
+		{"Customers", &client.Customers.CrudService, "/customers/"},
+		{"Refunds", client.Refunds, "/refunds/"},
+		{"Transfers", client.Transfers, "/transfers/"},
+		{"Beneficiaries", client.Beneficiaries, "/beneficiaries/"},
+		{"Links", client.Links, "/links/"},
+		{"Accounts", &client.Accounts.CrudService, "/accounts/"},
+		{"WebhookEndpoints", &client.WebhookEndpoints.CrudService, "/webhooks/"},
+		{"Invoices", &client.Invoices.CrudService, "/invoices/"},
+	}
+	for _, crud := range cruds {
+		service := crud.service
+		calls = append(calls,
+			call{crud.name + ".Retrieve", http.MethodGet, crud.path + "{id}", func(id string) error { _, err := service.Retrieve(ctx, id); return err }},
+			call{crud.name + ".Update", http.MethodPut, crud.path + "{id}", func(id string) error { _, err := service.Update(ctx, id, nil, nil); return err }},
+			call{crud.name + ".Delete", http.MethodDelete, crud.path + "{id}", func(id string) error { return service.Delete(ctx, id, nil) }},
+		)
+	}
+
+	ids := []struct{ raw, escaped string }{
+		{"pay/../x?y#z", "pay%2F..%2Fx%3Fy%23z"},
+		{"..", "%2E%2E"},
+		{".", "%2E"},
+	}
+	for _, c := range calls {
+		for _, id := range ids {
+			if err := c.do(id.raw); err != nil {
+				t.Fatalf("%s(%q): %v", c.name, id.raw, err)
+			}
+			want := strings.ReplaceAll(c.path, "{id}", id.escaped)
+			if method != c.method || path != want {
+				t.Errorf("%s(%q) sent %s %s, want %s %s", c.name, id.raw, method, path, c.method, want)
+			}
+		}
+	}
+}

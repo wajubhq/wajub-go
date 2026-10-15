@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -33,6 +34,15 @@ func createIdempotencyKey(prefix string) string {
 		return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 	}
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(b))
+}
+
+// escapeID makes id a single path segment, so that a "/", "?" or "#" in it,
+// or an id of "." or "..", cannot send the request to another route.
+func escapeID(id string) string {
+	if id == "." || id == ".." {
+		return strings.Repeat("%2E", len(id))
+	}
+	return url.PathEscape(id)
 }
 
 func pickResource(body map[string]any, keys ...string) map[string]any {
