@@ -84,7 +84,7 @@ A runnable version is in [`examples/create_payment/`](examples/create_payment/).
 |---------|---------|---------|
 | Payments | `client.Payments` | `Create`, `Retrieve`, `List`, `Cancel`, `Process`, `ProcessSplit`, `Refund`, `RetrieveRefund`, `ListRefunds` |
 | Refunds | `client.Refunds` | `Create`, `Retrieve`, `List` |
-| Customers | `client.Customers` | `Create`, `Retrieve`, `Update`, `Delete`, `List`, `Block`, `Unblock`, `Activate`, `Deactivate`, `ListTaxIds`, `CreateTaxId`, `DeleteTaxId` |
+| Customers | `client.Customers` | `Create`, `Retrieve`, `Update`, `Delete`, `List`, `Block`, `Unblock`, `Activate`, `Deactivate`, `ListTaxIDs`, `CreateTaxID`, `DeleteTaxID` |
 | Payment links | `client.Links` | `Create`, `Retrieve`, `Update`, `Delete`, `List` |
 | Invoices | `client.Invoices` | `Create`, `Retrieve`, `Update`, `Delete`, `List`, `Send`, `MarkPaid`, `Cancel` |
 | Payouts | `client.Transfers` | `Create`, `Retrieve`, `List` |
