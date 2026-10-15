@@ -1,12 +1,26 @@
 package wajub
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"strconv"
+	"strings"
+)
 
 // Payment represents a Wajub payment (transaction).
 type Payment struct {
-	ID                 string
-	Status             string
-	Amount             int64
+	ID     string
+	Status string
+	// Amount is the amount without its decimals: GHS 12.50 reads 12.
+	//
+	// Deprecated: Amount drops the decimals of every currency that has them.
+	// Read AmountDecimal.
+	Amount int64
+	// AmountDecimal is the amount in the currency's major unit, decimals
+	// included, as the API sends it: 15000 for XAF 15,000, 12.5 for GHS 12.50.
+	// Pass it back as is where the API takes an amount.
+	AmountDecimal      float64
 	Currency           string
 	AuthorizationURL   string
 	AuthorizationToken string
@@ -23,9 +37,8 @@ func parsePayment(body map[string]any) Payment {
 	if status, ok := transaction["status"].(string); ok {
 		payment.Status = status
 	}
-	if amount, ok := transaction["amount"].(float64); ok {
-		payment.Amount = int64(amount)
-	}
+	payment.AmountDecimal = decimalAmount(transaction["amount"])
+	payment.Amount = int64(payment.AmountDecimal)
 	if currency, ok := transaction["currency"].(string); ok {
 		payment.Currency = currency
 	}
@@ -77,8 +90,15 @@ func parseCustomer(body map[string]any) Customer {
 type Refund struct {
 	ID     string
 	Status string
+	// Amount is the amount without its decimals: GHS 12.50 reads 12.
+	//
+	// Deprecated: Amount drops the decimals of every currency that has them.
+	// Read AmountDecimal.
 	Amount int64
-	Raw    map[string]any
+	// AmountDecimal is the amount in the currency's major unit, decimals
+	// included, as the API sends it: 12.5 for GHS 12.50.
+	AmountDecimal float64
+	Raw           map[string]any
 }
 
 func parseRefund(body map[string]any) Refund {
@@ -91,9 +111,39 @@ func parseRefund(body map[string]any) Refund {
 	if status, ok := data["status"].(string); ok {
 		refund.Status = status
 	}
-	if amount, ok := data["amount"].(float64); ok {
-		refund.Amount = int64(amount)
-	}
+	refund.AmountDecimal = decimalAmount(data["amount"])
+	refund.Amount = int64(refund.AmountDecimal)
 
 	return refund
+}
+
+// decimalAmount reads an amount as the API sends it, a JSON number or a
+// numeric string ("12.50"), in the currency's major unit. Anything else, or no
+// amount, reads 0.
+func decimalAmount(value any) float64 {
+	var amount float64
+	switch v := value.(type) {
+	case float64:
+		amount = v
+	case int:
+		amount = float64(v)
+	case int64:
+		amount = float64(v)
+	case json.Number:
+		parsed, err := v.Float64()
+		if err != nil {
+			return 0
+		}
+		amount = parsed
+	case string:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+		if err != nil {
+			return 0
+		}
+		amount = parsed
+	}
+	if math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return 0
+	}
+	return amount
 }

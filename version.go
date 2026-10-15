@@ -2,7 +2,7 @@
 package wajub
 
 // Version is the SDK release version sent in the User-Agent header.
-const Version = "1.2.1"
+const Version = "1.3.0"
 
 // APIURL is the Wajub merchant API base URL.
 const APIURL = "https://api.wajub.com"

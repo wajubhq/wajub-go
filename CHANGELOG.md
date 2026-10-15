@@ -7,6 +7,26 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.3.0] — 2026-10-15
+
+### Added
+- **`Payment.AmountDecimal` and `Refund.AmountDecimal`, the amount with its
+  decimals.** The API sends amounts in the major unit of the currency, so
+  GHS 12.50 arrives as `12.5`. `AmountDecimal` is a `float64` that keeps it:
+  `12.5` for GHS 12.50, `15000` for XAF 15,000. An amount sent as a string
+  (`"12.50"`) reads the same. Put it back in a request as is, for a refund for
+  instance, and it goes out with its cents.
+
+### Deprecated
+- **`Payment.Amount` and `Refund.Amount`.** They are `int64` and drop the
+  decimals: GHS 12.50 reads `12`. They still hold that value, so code that
+  reads them compiles and behaves as before. Read `AmountDecimal` instead.
+
+### Fixed
+- The README said amounts are passed in the smallest currency unit (cents).
+  The API reads them in the major unit: send `12.50` for GHS 12.50, not `1250`.
+  Zero-decimal currencies such as XAF and XOF are not affected.
+
 ## [1.2.1] — 2026-10-12
 
 ### Fixed

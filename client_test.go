@@ -447,3 +447,97 @@ func TestRaisesAnyOther409AtOnce(t *testing.T) {
 		t.Fatalf("expected one call, got %d", calls)
 	}
 }
+
+func TestPaymentAmountKeepsItsDecimals(t *testing.T) {
+	cases := []struct {
+		name     string
+		amount   string
+		currency string
+		want     string
+		whole    int64
+	}{
+		{"zero-decimal currency", `15000`, "XAF", "15000", 15000},
+		{"two decimals", `12.5`, "GHS", "12.5", 12},
+		{"two decimals as a string", `"12.50"`, "GHS", "12.5", 12},
+		{"a tenth that has no exact binary form", `12.1`, "GHS", "12.1", 12},
+		{"one cent", `0.01`, "USD", "0.01", 0},
+		{"three decimals", `1.234`, "KWD", "1.234", 1},
+		{"large amount with cents", `9876543210.99`, "NGN", "9876543210.99", 9876543210},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, `{"transaction":{"id":"pay_1","amount":%s,"currency":%q}}`, tc.amount, tc.currency)
+			}))
+			t.Cleanup(server.Close)
+
+			payment, err := newTestClient(t, server).Payments.Retrieve(context.Background(), "pay_1")
+			if err != nil {
+				t.Fatalf("retrieve failed: %v", err)
+			}
+			if got := strconv.FormatFloat(payment.AmountDecimal, 'f', -1, 64); got != tc.want {
+				t.Fatalf("AmountDecimal = %s, want %s", got, tc.want)
+			}
+			if payment.Amount != tc.whole {
+				t.Fatalf("Amount = %d, want %d", payment.Amount, tc.whole)
+			}
+		})
+	}
+}
+
+func TestRefundAmountKeepsItsDecimals(t *testing.T) {
+	refund := parseRefund(map[string]any{"refund": map[string]any{"id": "ref_1", "amount": 7.25}})
+	if refund.AmountDecimal != 7.25 || refund.Amount != 7 {
+		t.Fatalf("unexpected refund amounts: %+v", refund)
+	}
+
+	refund = parseRefund(map[string]any{"refund": map[string]any{"id": "ref_2", "amount": "0.50"}})
+	if refund.AmountDecimal != 0.5 {
+		t.Fatalf("unexpected refund amount: %v", refund.AmountDecimal)
+	}
+
+	refund = parseRefund(map[string]any{"refund": map[string]any{"id": "ref_3", "amount": "not a number"}})
+	if refund.AmountDecimal != 0 || refund.Amount != 0 {
+		t.Fatalf("an unreadable amount should read 0: %+v", refund)
+	}
+}
+
+func TestAmountIsSentWithItsDecimals(t *testing.T) {
+	var bodies []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(body))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"transaction":{"id":"pay_1","amount":12.1,"currency":"GHS"}}`)
+	}))
+	t.Cleanup(server.Close)
+
+	client := newTestClient(t, server)
+	payment, err := client.Payments.Create(context.Background(), map[string]any{
+		"amount": 12.1, "currency": "GHS", "email": "buyer@example.com",
+	}, nil)
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// The amount read back goes out again unchanged, and so does a three
+	// decimal one.
+	if _, err := client.Refunds.Create(context.Background(), map[string]any{
+		"payment_id": payment.ID, "amount": payment.AmountDecimal,
+	}, nil); err != nil {
+		t.Fatalf("refund failed: %v", err)
+	}
+	if _, err := client.Payments.Create(context.Background(), map[string]any{
+		"amount": 1.234, "currency": "KWD", "email": "buyer@example.com",
+	}, nil); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	for i, want := range []string{`"amount":12.1,`, `"amount":12.1,`, `"amount":1.234,`} {
+		if !strings.Contains(bodies[i], want) {
+			t.Fatalf("request %d body %s does not carry %s", i, bodies[i], want)
+		}
+	}
+}
