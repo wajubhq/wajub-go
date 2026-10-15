@@ -98,7 +98,9 @@ type Refund struct {
 	// AmountDecimal is the amount in the currency's major unit, decimals
 	// included, as the API sends it: 12.5 for GHS 12.50.
 	AmountDecimal float64
-	Raw           map[string]any
+	// Currency is the refund's ISO 4217 currency code, such as "GHS".
+	Currency string
+	Raw      map[string]any
 }
 
 func parseRefund(body map[string]any) Refund {
@@ -113,6 +115,9 @@ func parseRefund(body map[string]any) Refund {
 	}
 	refund.AmountDecimal = decimalAmount(data["amount"])
 	refund.Amount = int64(refund.AmountDecimal)
+	if currency, ok := data["currency"].(string); ok {
+		refund.Currency = currency
+	}
 
 	return refund
 }

@@ -19,6 +19,10 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `422` can give a field several messages; `Errors` keeps only the first one.
   `invalid.FieldErrors["amount"]` lists them all, in the order the API sent
   them. `Errors` is unchanged.
+- **`Payments.Refund` and `Payments.RetrieveRefund`, which return a
+  `Refund`.** `Refund` refunds a payment, in full or for the `amount` you
+  pass; `RetrieveRefund` reads a refund by its id. `Refund` now has
+  `Currency`. `client.Refunds` still returns maps.
 
 ### Deprecated
 - **`Payment.Amount` and `Refund.Amount`.** They are `int64` and drop the

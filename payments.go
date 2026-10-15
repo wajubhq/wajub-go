@@ -58,3 +58,28 @@ func (s *PaymentsService) ListRefunds(ctx context.Context, id string, params map
 	data, meta := pickList(res, "refunds")
 	return data, meta, nil
 }
+
+// Refund refunds the payment id, in full or for the "amount" in params, and
+// returns the refund. Pass its "reason" in params. params is not changed.
+func (s *PaymentsService) Refund(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (Refund, error) {
+	body := make(map[string]any, len(params)+1)
+	for key, value := range params {
+		body[key] = value
+	}
+	body["payment"] = id
+
+	res, err := s.base.post(ctx, "/refunds", body, opts)
+	if err != nil {
+		return Refund{}, err
+	}
+	return parseRefund(res), nil
+}
+
+// RetrieveRefund returns the refund refundID, of any payment.
+func (s *PaymentsService) RetrieveRefund(ctx context.Context, refundID string) (Refund, error) {
+	res, err := s.base.get(ctx, "/refunds/"+refundID, nil)
+	if err != nil {
+		return Refund{}, err
+	}
+	return parseRefund(res), nil
+}

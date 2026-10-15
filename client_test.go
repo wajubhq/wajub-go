@@ -581,3 +581,74 @@ func TestAmountIsSentWithItsDecimals(t *testing.T) {
 		}
 	}
 }
+
+func TestPaymentsRefundReturnsTheRefund(t *testing.T) {
+	var method, path, idempotencyKey string
+	var body map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method, path, idempotencyKey = r.Method, r.URL.Path, r.Header.Get("Idempotency-Key")
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"refund":{"id":"rfd_1","status":"pending","amount":12.5,"currency":"GHS"}}`)
+	}))
+	t.Cleanup(server.Close)
+
+	params := map[string]any{"amount": 12.5, "reason": "requested_by_customer"}
+	client := newTestClient(t, server)
+	refund, err := client.Payments.Refund(context.Background(), "pay_1", params, &RequestOptions{IdempotencyKey: "refund-order-42"})
+	if err != nil {
+		t.Fatalf("refund failed: %v", err)
+	}
+
+	if method != http.MethodPost || path != "/refunds" {
+		t.Fatalf("expected POST /refunds, got %s %s", method, path)
+	}
+	if body["payment"] != "pay_1" || body["amount"] != 12.5 || body["reason"] != "requested_by_customer" {
+		t.Fatalf("unexpected body: %v", body)
+	}
+	if idempotencyKey != "refund-order-42" {
+		t.Fatalf("expected the caller's idempotency key, got %q", idempotencyKey)
+	}
+	if _, touched := params["payment"]; touched || len(params) != 2 {
+		t.Fatalf("the caller's params were changed: %v", params)
+	}
+	if refund.ID != "rfd_1" || refund.Status != "pending" || refund.AmountDecimal != 12.5 || refund.Currency != "GHS" {
+		t.Fatalf("unexpected refund: %+v", refund)
+	}
+}
+
+func TestPaymentsRefundSendsAnIdempotencyKeyOfItsOwn(t *testing.T) {
+	server, rec := newTestServer(t, []func(r *http.Request) (int, any){
+		func(r *http.Request) (int, any) {
+			return 200, map[string]any{"refund": map[string]any{"id": "rfd_1"}}
+		},
+	})
+
+	client := newTestClient(t, server)
+	if _, err := client.Payments.Refund(context.Background(), "pay_1", nil, nil); err != nil {
+		t.Fatalf("refund failed: %v", err)
+	}
+	if rec.Method != http.MethodPost || rec.Path != "/refunds" || !strings.HasPrefix(rec.IdempotencyKey, "wajub-") {
+		t.Fatalf("unexpected request: %+v", rec)
+	}
+}
+
+func TestPaymentsRetrieveRefundReturnsTheRefund(t *testing.T) {
+	server, rec := newTestServer(t, []func(r *http.Request) (int, any){
+		func(r *http.Request) (int, any) {
+			return 200, map[string]any{"refund": map[string]any{"id": "rfd_1", "status": "succeeded", "amount": 7.25, "currency": "GHS"}}
+		},
+	})
+
+	client := newTestClient(t, server)
+	refund, err := client.Payments.RetrieveRefund(context.Background(), "rfd_1")
+	if err != nil {
+		t.Fatalf("retrieve failed: %v", err)
+	}
+	if rec.Method != http.MethodGet || rec.Path != "/refunds/rfd_1" || rec.IdempotencyKey != "" {
+		t.Fatalf("unexpected request: %+v", rec)
+	}
+	if refund.ID != "rfd_1" || refund.Status != "succeeded" || refund.AmountDecimal != 7.25 || refund.Currency != "GHS" {
+		t.Fatalf("unexpected refund: %+v", refund)
+	}
+}

@@ -82,7 +82,7 @@ A runnable version is in [`examples/create_payment/`](examples/create_payment/).
 
 | Purpose | Service | Methods |
 |---------|---------|---------|
-| Payments | `client.Payments` | `Create`, `Retrieve`, `List`, `Cancel`, `Process`, `ProcessSplit`, `ListRefunds` |
+| Payments | `client.Payments` | `Create`, `Retrieve`, `List`, `Cancel`, `Process`, `ProcessSplit`, `Refund`, `RetrieveRefund`, `ListRefunds` |
 | Refunds | `client.Refunds` | `Create`, `Retrieve`, `List` |
 | Customers | `client.Customers` | `Create`, `Retrieve`, `Update`, `Delete`, `List`, `Block`, `Unblock`, `Activate`, `Deactivate`, `ListTaxIds`, `CreateTaxId`, `DeleteTaxId` |
 | Payment links | `client.Links` | `Create`, `Retrieve`, `Update`, `Delete`, `List` |
@@ -101,6 +101,15 @@ A runnable version is in [`examples/create_payment/`](examples/create_payment/).
 | Reference data | `client.Global` | `Ping`, `Channels`, `Countries`, `Currencies` |
 
 Every method takes a `context.Context` first. Parameters are a `map[string]any` with the API's field names, and the last argument, `*wajub.RequestOptions`, is usually `nil`.
+
+`client.Payments.Refund` refunds a payment, in full or for the `amount` you pass, and `client.Payments.RetrieveRefund` reads a refund by its id. Both return a `wajub.Refund`, whose amount, decimals included, is in `AmountDecimal`:
+
+```go
+refund, err := client.Payments.Refund(ctx, payment.ID, map[string]any{
+    "amount": 5000,
+    "reason": "requested_by_customer",
+}, nil)
+```
 
 ## Acting for a connected account
 
