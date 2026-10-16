@@ -37,19 +37,6 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   editor does not flag these calls: remove them.
 
 ### Fixed
-- An id containing `/`, `?` or `#`, or an id of `.` or `..`, sent the request
-  to another route: `client.Payments.Retrieve(ctx, "pay_1/refunds")` listed
-  the refunds of `pay_1`, and `client.Customers.Delete(ctx,
-  "cus_1/tax_ids/txi_1", nil)` deleted a tax id. Wajub ids never contain `/`:
-  an id with one now returns `wajub.ErrInvalidID` before anything is sent.
-  `?`, `#`, `.` and `..` are escaped, and the request reaches the resource the
-  id names.
-- An empty id left its segment out of the URL:
-  `client.Payments.Retrieve(ctx, "")` asked for the list of payments, and
-  `client.Customers.Delete(ctx, "", nil)` sent `DELETE /customers/`. Every
-  method that puts an id in the URL, such as `Retrieve`, `Update` and
-  `Delete`, now returns `wajub.ErrEmptyID` for an empty one, before anything
-  is sent.
 - A call whose context was cancelled, or whose deadline passed, while it
   waited to retry kept waiting until the end of the pause, up to the
   `Retry-After` the API asked for. It now returns at once, with an
@@ -58,6 +45,16 @@ The module uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The README said amounts are passed in the smallest currency unit (cents).
   Amounts are in the currency's main unit: send `12.50` for GHS 12.50, not
   `1250`. Currencies without decimals, such as XAF and XOF, are not affected.
+
+### Security
+- **An id that is not a Wajub id is refused before anything is sent.** If an
+  id you pass can come from a URL or a form, a call could act on another
+  resource of your account: `client.Customers.Delete(ctx,
+  "cus_1/tax_ids/txi_1", nil)` deleted a tax ID. An id that is empty, `.` or
+  `..`, or contains `/`, now returns `wajub.ErrEmptyID` (empty) or
+  `wajub.ErrInvalidID`. Wajub ids never take these forms, so valid calls are
+  unchanged. Any other character, such as `?` or `#`, now stays part of the
+  id, so the call reaches only the resource the id names.
 
 ## [1.2.1] — 2026-10-12
 
