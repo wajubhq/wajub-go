@@ -739,8 +739,8 @@ func TestIDsAreEscapedInRequestPaths(t *testing.T) {
 	ids := []struct{ raw, escaped string }{
 		{"pay_1?y=1#z", "pay_1%3Fy=1%23z"},
 		{"pay 1%2F", "pay%201%252F"},
-		{"..", "%2E%2E"},
-		{".", "%2E"},
+		// Dots inside an id are part of it.
+		{"trx.1..2", "trx.1..2"},
 		// A blank id is not empty: it reaches the resource's own route,
 		// where the API answers that there is no such resource.
 		{" ", "%20"},
@@ -786,6 +786,8 @@ func TestUnusableIDsAreRefusedBeforeAnyRequest(t *testing.T) {
 		{"pay_1/refunds", ErrInvalidID},
 		{"cus_1/tax_ids/txi_1", ErrInvalidID},
 		{"/", ErrInvalidID},
+		{".", ErrInvalidID},
+		{"..", ErrInvalidID},
 	}
 	for _, c := range calls {
 		for _, id := range ids {

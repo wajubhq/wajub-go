@@ -227,7 +227,7 @@ if err != nil {
 
 Every error carries `Message`, `Code`, `HTTPStatus`, `FieldErrors` (every validation message of each field), `Errors` (the first message of each field) and `Raw` (the response body). `wajub.AsAPIError(err)` returns that shared `*WajubError` whatever the type.
 
-A method that puts an id in the URL, such as `Retrieve`, `Update` or `Delete`, sends nothing when the id cannot be one: it returns `wajub.ErrEmptyID` for an empty id and `wajub.ErrInvalidID` for an id containing `/`. Check them with `errors.Is`.
+A method that puts an id in the URL, such as `Retrieve`, `Update` or `Delete`, sends nothing when the id cannot be one: it returns `wajub.ErrEmptyID` for an empty id and `wajub.ErrInvalidID` for an id that is `.` or `..` or contains `/`. Check them with `errors.Is`.
 
 ## Testing
 

@@ -9,9 +9,10 @@ import (
 // sent. Check it with errors.Is.
 var ErrEmptyID = errors.New("wajub: id is empty")
 
-// ErrInvalidID is returned by a method given an id containing a "/", before
-// anything is sent. No Wajub id contains one. Check it with errors.Is.
-var ErrInvalidID = errors.New("wajub: id contains a slash")
+// ErrInvalidID is returned by a method given an id that contains a "/" or is
+// "." or "..", before anything is sent. No Wajub id takes these forms. Check
+// it with errors.Is.
+var ErrInvalidID = errors.New("wajub: id is not a Wajub id")
 
 // WajubError is the base error for API failures.
 type WajubError struct {
