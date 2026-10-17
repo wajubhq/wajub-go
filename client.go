@@ -9,10 +9,16 @@ import (
 
 // Client is the Wajub server SDK entry point.
 type Client struct {
-	Global           *GlobalService
-	Payments         *PaymentsService
-	Customers        *CustomersService
-	Refunds          *CrudService
+	Global    *GlobalService
+	Payments  *PaymentsService
+	Customers *CustomersService
+	// Refunds creates, lists and reads refunds. The API cannot change or
+	// delete a refund: Refunds.Update and Refunds.Delete always return an
+	// error. Do not call them.
+	Refunds *CrudService
+	// Transfers creates, lists and reads payouts. The API cannot change or
+	// delete a payout: Transfers.Update and Transfers.Delete always return an
+	// error. Do not call them.
 	Transfers        *CrudService
 	Beneficiaries    *CrudService
 	Links            *CrudService

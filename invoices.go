@@ -5,7 +5,10 @@ import "context"
 type InvoicesService struct{ CrudService }
 
 func (s *InvoicesService) Send(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/invoices/"+id+"/send", nil, opts)
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
+	res, err := s.base.post(ctx, "/invoices/"+escapeID(id)+"/send", nil, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -13,7 +16,10 @@ func (s *InvoicesService) Send(ctx context.Context, id string, opts *RequestOpti
 }
 
 func (s *InvoicesService) MarkPaid(ctx context.Context, id string, params map[string]any, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/invoices/"+id+"/mark-paid", params, opts)
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
+	res, err := s.base.post(ctx, "/invoices/"+escapeID(id)+"/mark-paid", params, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +27,10 @@ func (s *InvoicesService) MarkPaid(ctx context.Context, id string, params map[st
 }
 
 func (s *InvoicesService) Cancel(ctx context.Context, id string, opts *RequestOptions) (map[string]any, error) {
-	res, err := s.base.post(ctx, "/invoices/"+id+"/cancel", nil, opts)
+	if err := checkIDs(id); err != nil {
+		return nil, err
+	}
+	res, err := s.base.post(ctx, "/invoices/"+escapeID(id)+"/cancel", nil, opts)
 	if err != nil {
 		return nil, err
 	}

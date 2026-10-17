@@ -145,12 +145,14 @@ func (c *baseClient) request(
 
 		res, err := c.httpClient.Do(req)
 		if err != nil {
-			if attempt < c.maxNetworkRetries {
-				time.Sleep(retryDelay(attempt+1, nil))
+			if attempt < c.maxNetworkRetries && ctx.Err() == nil {
+				if err := waitToRetry(ctx, retryDelay(attempt+1, nil)); err != nil {
+					return nil, connectionError(err)
+				}
 				attempt++
 				continue
 			}
-			return nil, &APIConnectionError{WajubError: WajubError{Message: err.Error(), Code: "network_error"}, Err: err}
+			return nil, connectionError(err)
 		}
 
 		data, err := io.ReadAll(res.Body)
@@ -166,7 +168,9 @@ func (c *baseClient) request(
 		}
 
 		if shouldRetryStatus(res.StatusCode) && attempt < c.maxNetworkRetries {
-			time.Sleep(retryDelay(attempt+1, res))
+			if err := waitToRetry(ctx, retryDelay(attempt+1, res)); err != nil {
+				return nil, connectionError(err)
+			}
 			attempt++
 			continue
 		}
@@ -174,7 +178,9 @@ func (c *baseClient) request(
 		// The same key still being processed: the first request's answer is
 		// coming. Asked again with the same key, the API returns it.
 		if idempotencyKey != "" && isIdempotencyKeyInProgress(res.StatusCode, parsed) && attempt < c.maxNetworkRetries {
-			time.Sleep(idempotencyConflictDelay(attempt + 1))
+			if err := waitToRetry(ctx, idempotencyConflictDelay(attempt+1)); err != nil {
+				return nil, connectionError(err)
+			}
 			attempt++
 			continue
 		}

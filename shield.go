@@ -46,6 +46,9 @@ func (s *ShieldService) AddToBlocklist(ctx context.Context, params map[string]an
 }
 
 func (s *ShieldService) RemoveFromBlocklist(ctx context.Context, id string, opts *RequestOptions) error {
-	_, err := s.base.delete(ctx, "/shield/blocklist/"+id, opts)
+	if err := checkIDs(id); err != nil {
+		return err
+	}
+	_, err := s.base.delete(ctx, "/shield/blocklist/"+escapeID(id), opts)
 	return err
 }

@@ -1,6 +1,7 @@
 package wajub
 
 import (
+	"context"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -33,6 +34,29 @@ func retryDelay(attempt int, res *http.Response) time.Duration {
 	jitter := 0.5 + rand.Float64()*0.5
 
 	return time.Duration(float64(base) * jitter)
+}
+
+// waitToRetry pauses for d before the next attempt. It returns ctx's error as
+// soon as ctx is cancelled or its deadline passes, rather than at the end of
+// the pause.
+func waitToRetry(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return ctx.Err()
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+// connectionError is the error of a call that ends without a response it can
+// return: the transport failed, or ctx ended while waiting to retry.
+func connectionError(err error) *APIConnectionError {
+	return &APIConnectionError{WajubError: WajubError{Message: err.Error(), Code: "network_error"}, Err: err}
 }
 
 func parseRetryAfter(res *http.Response) time.Duration {
